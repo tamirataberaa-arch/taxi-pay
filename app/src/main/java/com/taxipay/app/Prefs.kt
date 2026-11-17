@@ -8,7 +8,12 @@ object Prefs {
     fun enabled(c: Context) = sp(c).getBoolean("on", true)
     fun lang(c: Context) = sp(c).getString("lang", "en") ?: "en"
     fun senders(c: Context) = sp(c).getString("senders", DEFAULT_SENDERS) ?: DEFAULT_SENDERS
-    fun allowed(c: Context, from: String) = senders(c).split(",").any { it.trim().equals(from.trim(), ignoreCase = true) }
+    /** Letters in the list match if the sender name contains them (CBE matches "CBE-Alert"); numbers must match exactly. */
+    fun allowed(c: Context, from: String): Boolean {
+        val f = from.trim().lowercase()
+        return senders(c).split(",").map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+            .any { s -> if (s.all { ch -> ch.isDigit() }) f == s else f == s || f.contains(s) }
+    }
 
     /** True the first time a transaction reference is seen, false if it was already announced. */
     @Synchronized
