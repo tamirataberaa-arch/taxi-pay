@@ -13,6 +13,8 @@ import android.widget.*
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
+    private lateinit var allowBtn: Button
+    private lateinit var senders: EditText
 
     private fun button(t: String, f: () -> Unit) = Button(this).apply { text = t; isAllCaps = false; setOnClickListener { f() } }
     private fun label(t: String, size: Float = 14f) = TextView(this).apply { text = t; textSize = size; setPadding(0, 24, 0, 8) }
@@ -26,6 +28,15 @@ class MainActivity : Activity() {
         l.addView(label("Taxi Pay", 26f))
         status = label("")
         l.addView(status)
+        allowBtn = button("") {
+            val s = Prefs.sp(this).getString("blocked", "") ?: ""
+            if (s.isNotEmpty()) {
+                Prefs.sp(this).edit().putString("senders", Prefs.senders(this) + "," + s).remove("blocked").apply()
+                senders.setText(Prefs.senders(this)); refresh()
+            }
+        }
+        allowBtn.visibility = View.GONE
+        l.addView(allowBtn)
         l.addView(button("1. Allow SMS permission") { requestPermissions(arrayOf(Manifest.permission.RECEIVE_SMS), 1) })
         l.addView(button("2. Allow background running") {
             try { startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) }
@@ -53,7 +64,7 @@ class MainActivity : Activity() {
         })
 
         l.addView(label("Only announce messages from these senders"))
-        val senders = EditText(this).apply { setText(Prefs.senders(this@MainActivity)) }
+        senders = EditText(this).apply { setText(Prefs.senders(this@MainActivity)) }
         l.addView(senders)
         l.addView(button("Save senders") {
             Prefs.sp(this).edit().putString("senders", senders.text.toString().trim()).apply()
@@ -79,6 +90,11 @@ class MainActivity : Activity() {
     private fun refresh() {
         val sms = checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
         val bat = (getSystemService(POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
-        status.text = "SMS permission: " + (if (sms) "OK" else "NOT allowed yet") + "\nBackground running: " + (if (bat) "OK" else "not allowed yet")
+        val blocked = Prefs.sp(this).getString("blocked", "") ?: ""
+        allowBtn.visibility = if (blocked.isEmpty()) View.GONE else View.VISIBLE
+        allowBtn.text = "A payment SMS from \"$blocked\" was ignored. Tap to allow this sender."
+        val last = Prefs.sp(this).getString("last", "") ?: ""
+        status.text = "SMS permission: " + (if (sms) "OK" else "NOT allowed yet") + "\nBackground running: " + (if (bat) "OK" else "not allowed yet") +
+            "\nLast payment heard: " + (if (last.isEmpty()) "-" else last)
     }
 }
