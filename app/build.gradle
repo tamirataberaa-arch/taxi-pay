@@ -2,7 +2,7 @@ plugins { id 'com.android.application'; id 'org.jetbrains.kotlin.android' }
 android {
   namespace 'com.taxipay.app'
   compileSdk 34
-  defaultConfig { applicationId 'com.taxipay.app'; minSdk 24; targetSdk 34; versionCode (System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger(); versionName '1.0' }
+  defaultConfig { applicationId 'com.taxipay.app'; minSdk 24; targetSdk 34; versionCode = Integer.parseInt(System.getenv('GITHUB_RUN_NUMBER') ?: '1'); versionName '1.0' }
   signingConfigs {
     release {
       storeFile file('taxipay.p12'); storePassword System.getenv('KS_PASS'); keyAlias 'taxipay'; keyPassword System.getenv('KS_PASS'); storeType 'pkcs12'
