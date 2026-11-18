@@ -15,15 +15,27 @@ class SmsReceiver : BroadcastReceiver() {
         if (ms == null || ms.isEmpty()) return
         val from = ms[0].originatingAddress ?: return
         val pay = Parser.parse(ms.joinToString("") { it.messageBody ?: "" }) ?: return
-        if (!Prefs.allowed(c, from)) {   // looks like a payment but sender is not on the list: remember it so the user can allow it
+        if (!Prefs.allowed(c, from)) {   // looks like a payment but the sender is not on the list: remember it so the user can allow it
             Prefs.sp(c).edit().putString("blocked", from).apply()
             return
         }
         if (!Prefs.enabled(c)) return
         if (pay.ref != null && !Prefs.markSeen(c, pay.ref)) return
-        val time = SimpleDateFormat("HH:mm", Locale.US).format(Date())
-        Prefs.sp(c).edit().putString("last", (pay.name ?: pay.method) + " " + Speaker.fmt(pay.amount) + " Birr at " + time).apply()
         val pr = goAsync()
-        Speaker.announce(c, pay) { pr.finish() }
+        if (!Prefs.consume(c)) {   // no announcements left: warn by voice, at most once every 30 minutes
+            val now = System.currentTimeMillis()
+            if (now - Prefs.outAt(c) > 30 * 60 * 1000L) {
+                Prefs.sp(c).edit().putLong("outAt", now).apply()
+                Speaker.speak(c, "Taxi Pay announcements finished. Please recharge.", "የTaxi Pay ማሳወቂያ አልቋል። እባክዎ ይሙሉ።", Prefs.lang(c)) { pr.finish() }
+            } else pr.finish()
+            return
+        }
+        val left = Prefs.left(c)
+        var en = Speaker.english(pay)
+        var am = Speaker.amharic(pay)
+        if (left == 50 || left == 10) { en += " Only $left announcements left."; am += " $left ማሳወቂያ ብቻ ቀርቷል።" }
+        val time = SimpleDateFormat("HH:mm", Locale.US).format(Date())
+        Prefs.sp(c).edit().putString("last", (pay.name ?: pay.method) + "  ·  " + Speaker.fmt(pay.amount) + " Birr  ·  " + time).apply()
+        Speaker.speak(c, en, am, Prefs.lang(c)) { pr.finish() }
     }
 }
