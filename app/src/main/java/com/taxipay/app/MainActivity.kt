@@ -34,6 +34,7 @@ class MainActivity : Activity() {
 
     private lateinit var root: LinearLayout
     private var advanced = false
+    private var taps = 0
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun shape(color: Int, r: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(r).toFloat() }
@@ -57,7 +58,7 @@ class MainActivity : Activity() {
         setContentView(ScrollView(this).apply { setBackgroundColor(BG); addView(root) })
     }
 
-    override fun onResume() { super.onResume(); render() }
+    override fun onResume() { super.onResume(); Voice.syncIfDue(this); render() }
     override fun onRequestPermissionsResult(c: Int, p: Array<out String>, g: IntArray) { super.onRequestPermissionsResult(c, p, g); render() }
 
     private fun row(title: String, ok: Boolean, fix: () -> Unit): LinearLayout = LinearLayout(this).apply {
@@ -81,7 +82,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(36), dp(24), dp(28))
             background = GradientDrawable().apply { setColor(NAVY); val r = dp(28).toFloat(); cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r) }
         }
-        head.addView(tv("Taxi Pay", 30f, Color.WHITE, true))
+        head.addView(tv("Taxi Pay", 30f, Color.WHITE, true).apply { setOnClickListener { taps++; if (taps >= 7) { taps = 0; startActivity(Intent(this@MainActivity, VoiceStudioActivity::class.java)) } } })
         head.addView(tv("Hear every payment  ·  ክፍያ በድምፅ", 14f, YELLOW))
         head.addView(tv("●  $state", 14f, Color.WHITE, true).apply { background = shape(if (good) GREEN else ORANGE, 20); setPadding(dp(14), dp(8), dp(14), dp(8)) }, lp(w = WRAP, top = 16))
         root.addView(head, LinearLayout.LayoutParams(MATCH, WRAP))
@@ -135,7 +136,8 @@ class MainActivity : Activity() {
         langRow.addView(chip("English", "en"), LinearLayout.LayoutParams(0, WRAP, 1f).apply { setMargins(0, 0, dp(6), 0) })
         langRow.addView(chip("አማርኛ", "am"), LinearLayout.LayoutParams(0, WRAP, 1f).apply { setMargins(dp(6), 0, 0, 0) })
         voice.addView(langRow, lp(top = 14))
-        voice.addView(pill("▶  Test voice", NAVY, Color.WHITE) { Speaker.announce(this, Pay("Test", "Abebe Kebede", 25.0, null)) }, lp(top = 12))
+        voice.addView(pill("▶  Test voice", NAVY, Color.WHITE) { Announcer.announce(this, Pay("Test", "Abebe Kebede", 25.0, null)) }, lp(top = 12))
+        voice.addView(tv(Voice.status(this), 13f, GRAY), lp(top = 12))
         add(voice)
 
         val lastP = Prefs.sp(this).getString("last", "") ?: ""
