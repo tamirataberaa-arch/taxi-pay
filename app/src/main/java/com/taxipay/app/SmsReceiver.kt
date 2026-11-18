@@ -31,11 +31,9 @@ class SmsReceiver : BroadcastReceiver() {
             return
         }
         val left = Prefs.left(c)
-        var en = Speaker.english(pay)
-        var am = Speaker.amharic(pay)
-        if (left == 50 || left == 10) { en += " Only $left announcements left."; am += " $left ማሳወቂያ ብቻ ቀርቷል።" }
+        val low = left == 50 || left == 10
         val time = SimpleDateFormat("HH:mm", Locale.US).format(Date())
         Prefs.sp(c).edit().putString("last", (pay.name ?: pay.method) + "  ·  " + Speaker.fmt(pay.amount) + " Birr  ·  " + time).apply()
-        Speaker.speak(c, en, am, Prefs.lang(c)) { pr.finish() }
+        Announcer.announce(c, pay, Prefs.lang(c), if (low) " Only $left announcements left." else "", if (low) " $left ማሳወቂያ ብቻ ቀርቷል።" else "") { pr.finish() }
     }
 }
