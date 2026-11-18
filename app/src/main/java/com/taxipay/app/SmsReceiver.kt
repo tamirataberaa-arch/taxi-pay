@@ -32,6 +32,7 @@ class SmsReceiver : BroadcastReceiver() {
         }
         val left = Prefs.left(c)
         val low = left == 50 || left == 10
+        Ledger.add(c, pay)
         val time = SimpleDateFormat("HH:mm", Locale.US).format(Date())
         Prefs.sp(c).edit().putString("last", (pay.name ?: pay.method) + "  ·  " + Speaker.fmt(pay.amount) + " Birr  ·  " + time).apply()
         Announcer.announce(c, pay, Prefs.lang(c), if (low) " Only $left announcements left." else "", if (low) " $left ማሳወቂያ ብቻ ቀርቷል።" else "") { pr.finish() }
