@@ -99,6 +99,7 @@ class MainActivity : Activity() {
         bal.addView(bar, lp(top = 12))
         bal.addView(pill("Recharge  ·  50 Birr = 1000", YELLOW, NAVY) { showRecharge() }, lp(top = 16))
         add(bal, 16)
+        add(buildToday())
 
         val blocked = Prefs.sp(this).getString("blocked", "") ?: ""
         if (blocked.isNotEmpty()) {
@@ -171,6 +172,39 @@ class MainActivity : Activity() {
             add(adv)
         }
         add(tv("Everything is read on this phone only. An SMS shows a payment was sent to you; confirm large payments in your Telebirr or bank app.", 12f, GRAY).apply { gravity = Gravity.CENTER }, 16)
+    }
+
+    private fun buildToday(): LinearLayout {
+        val list = Ledger.today(this)
+        val c = card()
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val lc = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        lc.addView(tv("Collected today (from SMS)", 13f, GRAY))
+        lc.addView(tv(Ledger.money(Ledger.total(list)) + " Birr", 26f, INK, true))
+        top.addView(lc, LinearLayout.LayoutParams(0, WRAP, 1f))
+        top.addView(tv("↓ Download", 14f, NAVY, true).apply {
+            background = shape(YELLOW, 12); setPadding(dp(14), dp(10), dp(14), dp(10)); setOnClickListener { Ledger.download(this@MainActivity) }
+        })
+        c.addView(top)
+        c.addView(tv("${list.size} payments  ·  a new list starts at midnight", 12f, GRAY), lp(top = 4))
+        if (Prefs.left(this) <= 0) c.addView(tv("Recharge to keep recording payments", 12f, RED, true), lp(top = 4))
+        if (list.isEmpty()) {
+            c.addView(tv("No payments yet today", 14f, GRAY), lp(top = 12))
+        } else {
+            val inner = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+            for (e in list) {
+                val r = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dp(8), 0, dp(8)) }
+                val l = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+                l.addView(tv(e.name.ifEmpty { e.method + " payment" }, 15f, INK, true))
+                l.addView(tv(listOf(e.phone, Ledger.time(e.t)).filter { it.isNotEmpty() }.joinToString("  ·  "), 12f, GRAY))
+                r.addView(l, LinearLayout.LayoutParams(0, WRAP, 1f))
+                r.addView(tv("+" + Ledger.money(e.amount), 16f, GREEN, true))
+                inner.addView(r)
+            }
+            val sv = ScrollView(this).apply { addView(inner); setOnTouchListener { v, _ -> v.parent.requestDisallowInterceptTouchEvent(true); false } }
+            c.addView(sv, LinearLayout.LayoutParams(MATCH, if (list.size > 4) dp(200) else WRAP).apply { setMargins(0, dp(10), 0, 0) })
+        }
+        return c
     }
 
     private fun showRecharge() {
