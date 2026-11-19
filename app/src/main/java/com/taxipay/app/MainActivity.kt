@@ -35,6 +35,7 @@ class MainActivity : Activity() {
     private lateinit var root: LinearLayout
     private var advanced = false
     private var taps = 0
+    private var gateSkipped = false
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun shape(color: Int, r: Int) = GradientDrawable().apply { setColor(color); cornerRadius = dp(r).toFloat() }
@@ -58,7 +59,7 @@ class MainActivity : Activity() {
         setContentView(ScrollView(this).apply { setBackgroundColor(BG); addView(root) })
     }
 
-    override fun onResume() { super.onResume(); Voice.syncIfDue(this); render() }
+    override fun onResume() { super.onResume(); Voice.syncIfDue(this); Remote.refresh(this) { runOnUiThread { render() } }; render() }
     override fun onRequestPermissionsResult(c: Int, p: Array<out String>, g: IntArray) { super.onRequestPermissionsResult(c, p, g); render() }
 
     private fun row(title: String, ok: Boolean, fix: () -> Unit): LinearLayout = LinearLayout(this).apply {
@@ -71,6 +72,7 @@ class MainActivity : Activity() {
 
     private fun render() {
         root.removeAllViews()
+        if (needGate()) { renderGate(); return }
         val sms = checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED
         val bat = (getSystemService(POWER_SERVICE) as PowerManager).isIgnoringBatteryOptimizations(packageName)
         val on = Prefs.enabled(this)
@@ -87,6 +89,7 @@ class MainActivity : Activity() {
         head.addView(tv("●  $state", 14f, Color.WHITE, true).apply { background = shape(if (good) GREEN else ORANGE, 20); setPadding(dp(14), dp(8), dp(14), dp(8)) }, lp(w = WRAP, top = 16))
         root.addView(head, LinearLayout.LayoutParams(MATCH, WRAP))
 
+        for (n in buildNotices()) add(n, 12)
         val bal = card()
         bal.addView(tv("Announcements left", 14f, GRAY))
         bal.addView(tv(left.toString(), 44f, if (left <= 50) RED else INK, true))
@@ -205,6 +208,82 @@ class MainActivity : Activity() {
             c.addView(sv, LinearLayout.LayoutParams(MATCH, if (list.size > 4) dp(200) else WRAP).apply { setMargins(0, dp(10), 0, 0) })
         }
         return c
+    }
+
+    private fun needGate(): Boolean =
+        Remote.requireReg(this) && !gateSkipped && (Prefs.sp(this).getString("regPhone", "") ?: "").isEmpty()
+
+    private fun renderGate() {
+        val head = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(36), dp(24), dp(28))
+            background = GradientDrawable().apply { setColor(NAVY); val r = dp(28).toFloat(); cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r) }
+        }
+        head.addView(tv("Welcome to Taxi Pay", 28f, Color.WHITE, true))
+        head.addView(tv("እንኳን ደህና መጡ", 16f, YELLOW))
+        root.addView(head, LinearLayout.LayoutParams(MATCH, WRAP))
+        val c = card()
+        c.addView(tv("Register your phone number", 18f, INK, true))
+        c.addView(tv("ስልክ ቁጥርዎን ይመዝግቡ", 13f, GRAY))
+        val phone = EditText(this).apply { hint = "Phone number, e.g. 0911223344"; inputType = InputType.TYPE_CLASS_PHONE; textSize = 18f }
+        val name = EditText(this).apply { hint = "Name (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS }
+        val city = EditText(this).apply { hint = "City (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS }
+        c.addView(phone, lp(top = 12)); c.addView(name, lp(top = 4)); c.addView(city, lp(top = 4))
+        c.addView(tv("We use your number only to send Taxi Pay updates and support. ስልክ ቁጥርዎን ለዝማኔና ለድጋፍ ብቻ እንጠቀማለን።", 12f, GRAY), lp(top = 10))
+        val msg = tv("", 14f, RED, true)
+        c.addView(msg, lp(top = 8))
+        var busy = false
+        c.addView(pill("Continue  ·  ቀጥል", YELLOW, NAVY) {
+            if (busy) return@pill
+            busy = true; msg.setTextColor(GRAY); msg.text = "Please wait..."
+            Remote.register(this, phone.text.toString(), name.text.toString(), city.text.toString()) { ok, m ->
+                runOnUiThread { busy = false; if (ok) render() else { msg.setTextColor(RED); msg.text = m } }
+            }
+        }, lp(top = 12))
+        if (Prefs.sp(this).getInt("regSkips", 0) < 3) {
+            c.addView(tv("Later  ·  በኋላ", 14f, GRAY, true).apply {
+                gravity = Gravity.CENTER; setPadding(0, dp(14), 0, dp(4))
+                setOnClickListener {
+                    Prefs.sp(this@MainActivity).edit().putInt("regSkips", Prefs.sp(this@MainActivity).getInt("regSkips", 0) + 1).apply()
+                    gateSkipped = true; render()
+                }
+            }, lp(top = 4))
+        }
+        add(c, 16)
+    }
+
+    private fun buildNotices(): List<View> {
+        val out = ArrayList<View>()
+        val cfg = Remote.cfg(this)
+        val u = cfg.optJSONObject("update")
+        if (u != null && u.optInt("code") > Remote.installed(this)) {
+            val req = u.optBoolean("required")
+            val later = Prefs.sp(this).getLong("updLater", 0L)
+            if (req || System.currentTimeMillis() - later > 24 * 3600 * 1000L) {
+                val c = card()
+                val nm = u.optString("name")
+                c.addView(tv("New version available" + (if (nm.isNotEmpty()) "  ·  $nm" else ""), 16f, INK, true))
+                if (u.optString("notes").isNotEmpty()) c.addView(tv(u.optString("notes"), 13f, GRAY), lp(top = 4))
+                val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+                row.addView(pill("Update  ·  አዘምን", YELLOW, NAVY) { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u.optString("url")))) }, LinearLayout.LayoutParams(0, WRAP, 1f))
+                if (!req) row.addView(pill("Later", Color.parseColor("#E5E7EB"), NAVY) {
+                    Prefs.sp(this).edit().putLong("updLater", System.currentTimeMillis()).apply(); render()
+                }, LinearLayout.LayoutParams(0, WRAP, 1f).apply { setMargins(dp(8), 0, 0, 0) })
+                c.addView(row, lp(top = 12))
+                out.add(c)
+            }
+        }
+        val n = cfg.optJSONObject("news")
+        if (n != null && n.optString("text").isNotEmpty() && n.optString("id") != Prefs.sp(this).getString("newsSeen", "")) {
+            val c = card()
+            c.addView(tv("News  ·  ዜና", 13f, GRAY, true))
+            c.addView(tv(n.optString("text"), 15f, INK), lp(top = 4))
+            c.addView(tv("Got it  ·  ገባኝ", 14f, NAVY, true).apply {
+                setPadding(0, dp(12), 0, 0)
+                setOnClickListener { Prefs.sp(this@MainActivity).edit().putString("newsSeen", n.optString("id")).apply(); render() }
+            })
+            out.add(c)
+        }
+        return out
     }
 
     private fun showRecharge() {
