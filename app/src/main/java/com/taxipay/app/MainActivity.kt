@@ -105,12 +105,13 @@ class MainActivity : Activity() {
         bal.addView(tv(left.toString(), 44f, if (left <= 50) RED else INK, true))
         val t = Prefs.trial(this)
         if (t > 0) bal.addView(tv("Includes $t free trial announcements", 13f, GRAY))
-        val frac = (minOf(left, 1000).toFloat() / 1000f).coerceIn(0.001f, 0.999f)
+        val pc = Remote.pay(this); val priceN = pc.optInt("price", 50); val creditsN = pc.optInt("credits", 1000)
+        val frac = (minOf(left, creditsN).toFloat() / creditsN.toFloat()).coerceIn(0.001f, 0.999f)
         val bar = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; background = shape(Color.parseColor("#E5E7EB"), 6) }
         bar.addView(View(this).apply { background = shape(YELLOW, 6) }, LinearLayout.LayoutParams(0, dp(10), frac))
         bar.addView(View(this), LinearLayout.LayoutParams(0, dp(10), 1f - frac))
         bal.addView(bar, lp(top = 12))
-        bal.addView(pill("Recharge  ·  50 Birr = 1000", YELLOW, NAVY) { showRecharge() }, lp(top = 16))
+        bal.addView(pill("Recharge  ·  $priceN Birr = ${Ledger.money(creditsN.toDouble())}", YELLOW, NAVY) { Remote.refreshNow(this) { runOnUiThread { render(); showRecharge() } } }, lp(top = 16))
         add(bal, 16)
         add(buildToday())
         buildReferral()?.let { add(it) }
@@ -250,7 +251,7 @@ class MainActivity : Activity() {
         val name = EditText(this).apply { hint = "Name (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS }
         val city = EditText(this).apply { hint = "City (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS }
         c.addView(phone, lp(top = 12)); c.addView(name, lp(top = 4)); c.addView(city, lp(top = 4))
-        val ref = EditText(this).apply { hint = "Referral code (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS }
+        val ref = EditText(this).apply { hint = "Referral code (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS; setText(Prefs.sp(this@MainActivity).getString("refPref", "") ?: "") }
         c.addView(ref, lp(top = 4))
         c.addView(tv("We use your number only to send Zound Pay updates and support. We also record how many payments you receive each day and their total (never payers' names). ስልክ ቁጥርዎን ለዝማኔና ለድጋፍ ብቻ እንጠቀማለን። የሚቀበሉትን ክፍያ ብዛትና ጠቅላላ መጠን (የከፋዮችን ስም ሳይሆን) እንመዘግባለን።", 12f, GRAY), lp(top = 10))
         val msg = tv("", 14f, RED, true)
@@ -338,6 +339,20 @@ class MainActivity : Activity() {
         return out
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        val sp = Prefs.sp(this)
+        if (!hasFocus || sp.contains("refPref") || (sp.getString("regPhone", "") ?: "").isNotEmpty()) return
+        val tries = sp.getInt("refTries", 0)
+        if (tries >= 4) return
+        sp.edit().putInt("refTries", tries + 1).apply()
+        try {   // an invitation link copies "ZPREF:CODE" to the clipboard when the download button is tapped
+            val cb = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val m = Regex("ZPREF:([A-Z0-9]{6})").find(cb.primaryClip?.getItemAt(0)?.text?.toString() ?: "")
+            if (m != null) { sp.edit().putString("refPref", m.groupValues[1]).apply(); cb.setPrimaryClip(ClipData.newPlainText("", "")); render() }
+        } catch (e: Exception) { }
+    }
+
     private fun buildReferral(): LinearLayout? {
         val me = try { JSONObject(Prefs.sp(this).getString("me", "") ?: "") } catch (e: Exception) { null }
         if (me == null || !me.optBoolean("ok") || me.optString("code").isEmpty()) return null
@@ -345,11 +360,11 @@ class MainActivity : Activity() {
         val c = card()
         c.addView(tv("Invite friends  ·  ጓደኞችን ይጋብዙ", 13f, GRAY, true))
         c.addView(tv(code, 30f, NAVY, true), lp(top = 2))
-        c.addView(tv("Earn ${Speaker.fmt(me.optDouble("pct", 10.0))}% commission when a friend you invite recharges.", 13f, GRAY), lp(top = 2))
+        c.addView(tv("Earn ${Speaker.fmt(Remote.cfg(this).optDouble("refPct", me.optDouble("pct", 10.0)))}% commission when a friend you invite recharges.", 13f, GRAY), lp(top = 2))
         c.addView(tv("${me.optInt("referrals")} joined  ·  earned ${Ledger.money(me.optDouble("earned"))} Birr  ·  paid ${Ledger.money(me.optDouble("paid"))} Birr", 13f, INK, true), lp(top = 6))
         c.addView(pill("Share my code", YELLOW, NAVY) {
-            val link = Remote.cfg(this).optJSONObject("update")?.optString("url") ?: ""
-            val text = "Zound Pay: hear every payment on your phone. Download: $link  Use my code $code when you register."
+            val base = Remote.cfg(this).optString("shareUrl", "https://tamirataberaa-arch.github.io/taxi-pay/")
+            val text = "Zound Pay: hear every payment on your phone. Download here: $base?ref=$code (my referral code $code is added for you).  ክፍያ በድምፅ ይስሙ፦ $base?ref=$code"
             startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }, "Share"))
         }, lp(top = 10))
         return c
@@ -372,7 +387,7 @@ class MainActivity : Activity() {
         val credits = pay.optInt("credits", 1000)
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(24), dp(24), dp(24)) }
         box.addView(tv("Recharge Zound Pay", 22f, INK, true))
-        box.addView(tv("$price Birr = $credits announcements  ·  ${price * 2} Birr = ${credits * 2}", 14f, GRAY))
+        box.addView(tv("$price Birr = ${Ledger.money(credits.toDouble())} announcements  ·  ${price * 2} Birr = ${Ledger.money(credits * 2.0)}", 14f, GRAY))
         box.addView(tv("1.  Send $price Birr to one of these", 16f, INK, true), lp(top = 20))
         box.addView(tv("$price ብር ወደ አንዱ ይላኩ", 13f, GRAY))
         val opts = pay.optJSONArray("options")
