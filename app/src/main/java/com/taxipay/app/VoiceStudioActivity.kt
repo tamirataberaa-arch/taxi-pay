@@ -14,7 +14,7 @@ import android.widget.*
 
 /** Owner-only: record each word once. Phones download the result automatically. */
 class VoiceStudioActivity : Activity() {
-    private val NAVY = Color.parseColor("#0F1B3D")
+    private val NAVY = Color.parseColor("#6B0A24")
     private val YELLOW = Color.parseColor("#FFC107")
     private val BG = Color.parseColor("#F3F5F9")
     private val GREEN = Color.parseColor("#1FA85A")
