@@ -21,6 +21,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import org.json.JSONObject
 
 class MainActivity : Activity() {
     private val NAVY = Color.parseColor("#6B0A24")
@@ -112,6 +113,7 @@ class MainActivity : Activity() {
         bal.addView(pill("Recharge  ·  50 Birr = 1000", YELLOW, NAVY) { showRecharge() }, lp(top = 16))
         add(bal, 16)
         add(buildToday())
+        buildReferral()?.let { add(it) }
 
         val blocked = Prefs.sp(this).getString("blocked", "") ?: ""
         if (blocked.isNotEmpty()) {
@@ -248,6 +250,8 @@ class MainActivity : Activity() {
         val name = EditText(this).apply { hint = "Name (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS }
         val city = EditText(this).apply { hint = "City (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS }
         c.addView(phone, lp(top = 12)); c.addView(name, lp(top = 4)); c.addView(city, lp(top = 4))
+        val ref = EditText(this).apply { hint = "Referral code (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS }
+        c.addView(ref, lp(top = 4))
         c.addView(tv("We use your number only to send Zound Pay updates and support. We also record how many payments you receive each day and their total (never payers' names). ስልክ ቁጥርዎን ለዝማኔና ለድጋፍ ብቻ እንጠቀማለን። የሚቀበሉትን ክፍያ ብዛትና ጠቅላላ መጠን (የከፋዮችን ስም ሳይሆን) እንመዘግባለን።", 12f, GRAY), lp(top = 10))
         val msg = tv("", 14f, RED, true)
         c.addView(msg, lp(top = 8))
@@ -255,8 +259,8 @@ class MainActivity : Activity() {
         c.addView(pill("Continue  ·  ቀጥል", YELLOW, NAVY) {
             if (busy) return@pill
             busy = true; msg.setTextColor(GRAY); msg.text = "Please wait..."
-            Remote.register(this, phone.text.toString(), name.text.toString(), city.text.toString()) { ok, m ->
-                runOnUiThread { busy = false; if (ok) render() else { msg.setTextColor(RED); msg.text = m } }
+            Remote.register(this, phone.text.toString(), name.text.toString(), city.text.toString(), ref.text.toString()) { ok, m ->
+                runOnUiThread { busy = false; if (ok) { Remote.refresh(this) { runOnUiThread { render() } }; render() } else { msg.setTextColor(RED); msg.text = m } }
             }
         }, lp(top = 12))
         if (Prefs.sp(this).getInt("regSkips", 0) < 3) {
@@ -332,6 +336,23 @@ class MainActivity : Activity() {
             out.add(c)
         }
         return out
+    }
+
+    private fun buildReferral(): LinearLayout? {
+        val me = try { JSONObject(Prefs.sp(this).getString("me", "") ?: "") } catch (e: Exception) { null }
+        if (me == null || !me.optBoolean("ok") || me.optString("code").isEmpty()) return null
+        val code = me.optString("code")
+        val c = card()
+        c.addView(tv("Invite friends  ·  ጓደኞችን ይጋብዙ", 13f, GRAY, true))
+        c.addView(tv(code, 30f, NAVY, true), lp(top = 2))
+        c.addView(tv("Earn ${Speaker.fmt(me.optDouble("pct", 10.0))}% commission when a friend you invite recharges.", 13f, GRAY), lp(top = 2))
+        c.addView(tv("${me.optInt("referrals")} joined  ·  earned ${Ledger.money(me.optDouble("earned"))} Birr  ·  paid ${Ledger.money(me.optDouble("paid"))} Birr", 13f, INK, true), lp(top = 6))
+        c.addView(pill("Share my code", YELLOW, NAVY) {
+            val link = Remote.cfg(this).optJSONObject("update")?.optString("url") ?: ""
+            val text = "Zound Pay: hear every payment on your phone. Download: $link  Use my code $code when you register."
+            startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }, "Share"))
+        }, lp(top = 10))
+        return c
     }
 
     private var onPicked: ((String) -> Unit)? = null
