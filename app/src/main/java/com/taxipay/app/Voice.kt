@@ -247,7 +247,7 @@ object Announcer {
         val name = pay.name
         if (name != null) {
             val nameLang = if (name.any { it.code in 0x1200..0x137F }) "am" else "en"
-            Speaker.speak(c, name, name, nameLang) { Voice.play(c, lang, keys, after) }
+            Speaker.speakQuiet(c, name, name, nameLang) { Voice.play(c, lang, keys, after) }
         } else Voice.play(c, lang, keys, after)
     }
 }
