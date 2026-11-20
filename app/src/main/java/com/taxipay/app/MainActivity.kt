@@ -10,7 +10,9 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.media.AudioManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
@@ -21,7 +23,7 @@ import android.view.ViewGroup
 import android.widget.*
 
 class MainActivity : Activity() {
-    private val NAVY = Color.parseColor("#0F1B3D")
+    private val NAVY = Color.parseColor("#6B0A24")
     private val YELLOW = Color.parseColor("#FFC107")
     private val BG = Color.parseColor("#F3F5F9")
     private val GREEN = Color.parseColor("#1FA85A")
@@ -55,11 +57,12 @@ class MainActivity : Activity() {
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
         window.statusBarColor = NAVY
+        if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != PackageManager.PERMISSION_GRANTED) requestPermissions(arrayOf("android.permission.POST_NOTIFICATIONS"), 2)
         root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(0, 0, 0, dp(32)) }
         setContentView(ScrollView(this).apply { setBackgroundColor(BG); addView(root) })
     }
 
-    override fun onResume() { super.onResume(); Voice.syncIfDue(this); Remote.refresh(this) { runOnUiThread { render() } }; render() }
+    override fun onResume() { super.onResume(); Speaker.probe(this); Voice.syncIfDue(this); Remote.refresh(this) { runOnUiThread { render() } }; render() }
     override fun onRequestPermissionsResult(c: Int, p: Array<out String>, g: IntArray) { super.onRequestPermissionsResult(c, p, g); render() }
 
     private fun row(title: String, ok: Boolean, fix: () -> Unit): LinearLayout = LinearLayout(this).apply {
@@ -84,7 +87,13 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(36), dp(24), dp(28))
             background = GradientDrawable().apply { setColor(NAVY); val r = dp(28).toFloat(); cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r) }
         }
-        head.addView(tv("Taxi Pay", 30f, Color.WHITE, true).apply { setOnClickListener { taps++; if (taps >= 7) { taps = 0; startActivity(Intent(this@MainActivity, VoiceStudioActivity::class.java)) } } })
+        val brand = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        brand.addView(ImageView(this).apply { setImageResource(R.drawable.zound_mark); background = shape(Color.WHITE, 26); setPadding(dp(7), dp(9), dp(7), dp(9)) }, LinearLayout.LayoutParams(dp(54), dp(54)))
+        brand.addView(tv("Zound Pay", 30f, Color.WHITE, true).apply {
+            setPadding(dp(14), 0, 0, 0)
+            setOnClickListener { taps++; if (taps >= 7) { taps = 0; startActivity(Intent(this@MainActivity, VoiceStudioActivity::class.java)) } }
+        })
+        head.addView(brand)
         head.addView(tv("Hear every payment  ·  ክፍያ በድምፅ", 14f, YELLOW))
         head.addView(tv("●  $state", 14f, Color.WHITE, true).apply { background = shape(if (good) GREEN else ORANGE, 20); setPadding(dp(14), dp(8), dp(14), dp(8)) }, lp(w = WRAP, top = 16))
         root.addView(head, LinearLayout.LayoutParams(MATCH, WRAP))
@@ -120,6 +129,12 @@ class MainActivity : Activity() {
         setup.addView(row("Keep running in background", bat) {
             try { startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName"))) }
             catch (e: Exception) { startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)) }
+        }, lp(top = 12))
+        setup.addView(row("Sound volume", Diag.volumeOk(this)) { (getSystemService(AUDIO_SERVICE) as AudioManager).adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI) }, lp(top = 12))
+        val ttsState = Prefs.sp(this).getString("d_tts", "") ?: ""
+        val voiceOk = ttsState == "ok" || ttsState.isEmpty() || Voice.count(this, "en") == Voice.prompts("en").size
+        setup.addView(row("Speech voice" + (if (voiceOk) "" else " ($ttsState)"), voiceOk) {
+            try { startActivity(Intent("com.android.settings.TTS_SETTINGS")) } catch (e: Exception) { startActivity(Intent(Settings.ACTION_SETTINGS)) }
         }, lp(top = 12))
         add(setup)
 
@@ -172,6 +187,11 @@ class MainActivity : Activity() {
                 else "Method: ${p.method}\nName: ${p.name ?: "(none in this SMS)"}\nAmount: ${Speaker.fmt(p.amount)}\nReference: ${p.ref ?: "-"}"
             }, lp(top = 8))
             adv.addView(out, lp(top = 8))
+        adv.addView(tv("Sound check", 14f, GRAY), lp(top = 20))
+        adv.addView(tv(Diag.lastLine(this), 13f, INK), lp(top = 4))
+        adv.addView(pill("Send a problem report", NAVY, Color.WHITE) {
+            Remote.report(this) { ok -> runOnUiThread { Toast.makeText(this, if (ok) "Report sent. Thank you." else "Could not send. Check internet.", Toast.LENGTH_LONG).show() } }
+        }, lp(top = 8))
             add(adv)
         }
         add(tv("Everything is read on this phone only. An SMS shows a payment was sent to you; confirm large payments in your Telebirr or bank app.", 12f, GRAY).apply { gravity = Gravity.CENTER }, 16)
@@ -218,7 +238,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(36), dp(24), dp(28))
             background = GradientDrawable().apply { setColor(NAVY); val r = dp(28).toFloat(); cornerRadii = floatArrayOf(0f, 0f, 0f, 0f, r, r, r, r) }
         }
-        head.addView(tv("Welcome to Taxi Pay", 28f, Color.WHITE, true))
+        head.addView(tv("Welcome to Zound Pay", 28f, Color.WHITE, true))
         head.addView(tv("እንኳን ደህና መጡ", 16f, YELLOW))
         root.addView(head, LinearLayout.LayoutParams(MATCH, WRAP))
         val c = card()
@@ -228,7 +248,7 @@ class MainActivity : Activity() {
         val name = EditText(this).apply { hint = "Name (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS }
         val city = EditText(this).apply { hint = "City (optional)"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_WORDS }
         c.addView(phone, lp(top = 12)); c.addView(name, lp(top = 4)); c.addView(city, lp(top = 4))
-        c.addView(tv("We use your number only to send Taxi Pay updates and support. ስልክ ቁጥርዎን ለዝማኔና ለድጋፍ ብቻ እንጠቀማለን።", 12f, GRAY), lp(top = 10))
+        c.addView(tv("We use your number only to send Zound Pay updates and support. We also record how many payments you receive each day and their total (never payers' names). ስልክ ቁጥርዎን ለዝማኔና ለድጋፍ ብቻ እንጠቀማለን። የሚቀበሉትን ክፍያ ብዛትና ጠቅላላ መጠን (የከፋዮችን ስም ሳይሆን) እንመዘግባለን።", 12f, GRAY), lp(top = 10))
         val msg = tv("", 14f, RED, true)
         c.addView(msg, lp(top = 8))
         var busy = false
@@ -283,25 +303,90 @@ class MainActivity : Activity() {
             })
             out.add(c)
         }
+        val unread = Prefs.sp(this).getString("unread", "") ?: ""
+        if (unread.isNotEmpty()) {
+            val c = card()
+            c.addView(tv("A payment message could not be read", 16f, INK, true))
+            c.addView(tv("Send it to Zound Pay so we can fix it. Only this one message is sent.", 13f, GRAY), lp(top = 4))
+            val rw = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            rw.addView(pill("Send", YELLOW, NAVY) {
+                Remote.report(this) { ok ->
+                    runOnUiThread {
+                        if (ok) Prefs.sp(this).edit().remove("unread").apply()
+                        Toast.makeText(this, if (ok) "Sent. Thank you!" else "Could not send. Check internet.", Toast.LENGTH_LONG).show(); render()
+                    }
+                }
+            }, LinearLayout.LayoutParams(0, WRAP, 1f))
+            rw.addView(pill("Dismiss", Color.parseColor("#E5E7EB"), NAVY) { Prefs.sp(this).edit().remove("unread").apply(); render() }, LinearLayout.LayoutParams(0, WRAP, 1f).apply { setMargins(dp(8), 0, 0, 0) })
+            c.addView(rw, lp(top = 12))
+            out.add(c)
+        }
+        if ((Prefs.sp(this).getString("regPhone", "") ?: "").isNotEmpty() && !Prefs.sp(this).contains("statsConsent")) {
+            val c = card()
+            c.addView(tv("Zound Pay records how many payments you receive each day and their total. Payers' names are never sent.", 13f, INK))
+            c.addView(tv("Zound Pay በየቀኑ የሚቀበሉትን ክፍያ ብዛትና ጠቅላላ መጠን ይመዘግባል። የከፋዮች ስም አይላክም።", 12f, GRAY), lp(top = 4))
+            val rw = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            rw.addView(pill("OK", YELLOW, NAVY) { Prefs.sp(this).edit().putBoolean("statsConsent", true).apply(); render() }, LinearLayout.LayoutParams(0, WRAP, 1f))
+            rw.addView(pill("No thanks", Color.parseColor("#E5E7EB"), NAVY) { Prefs.sp(this).edit().putBoolean("statsConsent", false).apply(); render() }, LinearLayout.LayoutParams(0, WRAP, 1f).apply { setMargins(dp(8), 0, 0, 0) })
+            c.addView(rw, lp(top = 12))
+            out.add(c)
+        }
         return out
     }
 
+    private var onPicked: ((String) -> Unit)? = null
+
+    override fun onActivityResult(req: Int, res: Int, data: Intent?) {
+        super.onActivityResult(req, res, data)
+        val uri = data?.data
+        if (req == 77 && res == RESULT_OK && uri != null) {
+            val cb = onPicked
+            Receipt.readId(this, uri) { id -> runOnUiThread { cb?.invoke(id) } }
+        }
+    }
+
     private fun showRecharge() {
+        val pay = Remote.pay(this)
+        val price = pay.optInt("price", 50)
+        val credits = pay.optInt("credits", 1000)
         val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(24), dp(24), dp(24), dp(24)) }
-        box.addView(tv("Recharge Taxi Pay", 22f, INK, true))
-        box.addView(tv("50 Birr = 1000 announcements  ·  100 Birr = 2000", 14f, GRAY))
-        box.addView(tv("1.  Send 50 Birr by Telebirr to", 16f, INK, true), lp(top = 20))
-        box.addView(tv("50 ብር በቴሌብር ወደዚህ ቁጥር ይላኩ", 13f, GRAY))
-        box.addView(tv(Billing.PHONE, 30f, NAVY, true), lp(top = 6))
-        box.addView(pill("Copy number", Color.parseColor("#EEF0F4"), NAVY) {
-            (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("phone", Billing.PHONE))
-            Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
-        }, lp(top = 8))
-        box.addView(tv("2.  Type the Transaction number from the Telebirr SMS you get", 16f, INK, true), lp(top = 22))
-        box.addView(tv("በቴሌብር መልዕክት ውስጥ ያለውን የግብይት ቁጥር ያስገቡ", 13f, GRAY))
+        box.addView(tv("Recharge Zound Pay", 22f, INK, true))
+        box.addView(tv("$price Birr = $credits announcements  ·  ${price * 2} Birr = ${credits * 2}", 14f, GRAY))
+        box.addView(tv("1.  Send $price Birr to one of these", 16f, INK, true), lp(top = 20))
+        box.addView(tv("$price ብር ወደ አንዱ ይላኩ", 13f, GRAY))
+        val opts = pay.optJSONArray("options")
+        var n = 0
+        if (opts != null) for (i in 0 until opts.length()) {
+            val o = opts.getJSONObject(i)
+            val num = o.optString("number")
+            if (num.isEmpty()) continue
+            n++
+            val oc = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; background = shape(Color.parseColor("#F3F5F9"), 16); setPadding(dp(16), dp(12), dp(16), dp(12)) }
+            oc.addView(tv(o.optString("bank"), 13f, GRAY, true))
+            oc.addView(tv(num, 26f, NAVY, true))
+            if (o.optString("name").isNotEmpty()) oc.addView(tv(o.optString("name"), 13f, GRAY))
+            oc.addView(tv("Copy number", 14f, NAVY, true).apply {
+                setPadding(0, dp(8), 0, 0)
+                setOnClickListener {
+                    (getSystemService(CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("pay", num))
+                    Toast.makeText(this@MainActivity, "Copied", Toast.LENGTH_SHORT).show()
+                }
+            })
+            box.addView(oc, lp(top = 10))
+        }
+        if (n == 0) box.addView(tv(Billing.PHONE + "  (Telebirr)", 24f, NAVY, true), lp(top = 10))
+        box.addView(tv("2.  Type the transaction number from the payment SMS, or upload the receipt screenshot", 16f, INK, true), lp(top = 22))
+        box.addView(tv("የግብይት ቁጥሩን ይጻፉ ወይም የደረሰኙን ፎቶ ይጫኑ", 13f, GRAY))
         val tx = EditText(this).apply { hint = "Example: DKH0AT8XBO"; inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS; textSize = 18f }
         box.addView(tx, lp(top = 6))
         val result = tv("", 15f, GRAY, true)
+        box.addView(pill("Upload receipt screenshot", Color.parseColor("#EEF0F4"), NAVY) {
+            onPicked = { id ->
+                if (id.isEmpty()) { result.setTextColor(RED); result.text = "Could not read the number. Please type it." }
+                else { tx.setText(id); result.setTextColor(GRAY); result.text = "Found $id. Check it, then tap Activate." }
+            }
+            startActivityForResult(Intent(Intent.ACTION_GET_CONTENT).apply { type = "image/*" }, 77)
+        }, lp(top = 8))
         box.addView(result, lp(top = 8))
         val dlg = AlertDialog.Builder(this).setView(ScrollView(this).apply { addView(box) }).create()
         var busy = false
