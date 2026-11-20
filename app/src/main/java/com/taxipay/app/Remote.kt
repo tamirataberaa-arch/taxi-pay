@@ -45,6 +45,10 @@ object Remote {
                     if (trial >= 0 && !sp.contains("trial") && !sp.contains("trialInit")) ed.putInt("trial", trial).putBoolean("trialInit", true)
                 } catch (e: Exception) { }
                 ed.apply()
+                if ((sp.getString("regPhone", "") ?: "").isNotEmpty()) {
+                    val m = call(BASE + "me?d=" + Prefs.device(c))
+                    if (m != null && m.trim().startsWith("{")) sp.edit().putString("me", m).apply()
+                }
                 if (sp.getBoolean("statsConsent", false)) postStats(c)
                 done()
             }
@@ -69,14 +73,14 @@ object Remote {
         call(BASE + "stats", JSONObject().put("device", Prefs.device(c)).put("days", days).toString())
     }
 
-    fun register(c: Context, phone: String, name: String, city: String, cb: (Boolean, String) -> Unit) {
+    fun register(c: Context, phone: String, name: String, city: String, ref: String, cb: (Boolean, String) -> Unit) {
         Thread {
-            val b = JSONObject().put("phone", phone).put("name", name).put("city", city).put("device", Prefs.device(c)).put("version", installed(c)).toString()
+            val b = JSONObject().put("phone", phone).put("name", name).put("city", city).put("device", Prefs.device(c)).put("version", installed(c)).put("ref", ref.trim()).toString()
             val t = call(BASE + "register", b)
             if (t == null) cb(false, "No internet. Please try again.")
             else try {
                 val j = JSONObject(t)
-                if (j.optBoolean("ok")) { Prefs.sp(c).edit().putString("regPhone", j.optString("phone")).putBoolean("statsConsent", true).apply(); cb(true, "") }
+                if (j.optBoolean("ok")) { Prefs.sp(c).edit().putString("regPhone", j.optString("phone")).putString("myCode", j.optString("code")).putBoolean("statsConsent", true).putLong("cfgAt", 0L).apply(); cb(true, "") }
                 else cb(false, j.optString("msg", "Could not register."))
             } catch (e: Exception) { cb(false, "Server is busy. Please try again.") }
         }.start()
