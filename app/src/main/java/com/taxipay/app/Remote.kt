@@ -21,9 +21,9 @@ object Remote {
     @Suppress("DEPRECATION")
     fun installed(c: Context): Int = try { c.packageManager.getPackageInfo(c.packageName, 0).versionCode } catch (e: Exception) { 0 }
 
-    private fun call(url: String, body: String? = null): String? = try {
+    private fun call(url: String, body: String? = null, fast: Boolean = false): String? = try {
         val h = URL(url).openConnection() as HttpURLConnection
-        h.connectTimeout = 20000; h.readTimeout = 60000
+        h.connectTimeout = if (fast) 6000 else 20000; h.readTimeout = if (fast) 8000 else 60000
         if (body != null) {
             h.requestMethod = "POST"; h.doOutput = true; h.setRequestProperty("Content-Type", "application/json")
             h.outputStream.use { it.write(body.toByteArray()) }
@@ -34,7 +34,7 @@ object Remote {
     /** Gets settings and news (at most every 10 minutes), tells the server this phone is active and sends daily totals if allowed. */
     fun refresh(c: Context, done: () -> Unit = {}) {
         val now = System.currentTimeMillis()
-        if (now - Prefs.sp(c).getLong("cfgAt", 0L) < 600000L) return
+        if (now - Prefs.sp(c).getLong("cfgAt", 0L) < 30000L) return
         Thread {
             val t = call(BASE + "config?d=" + Prefs.device(c) + "&v=" + installed(c))
             if (t != null && t.trim().startsWith("{")) {
@@ -52,6 +52,15 @@ object Remote {
                 if (sp.getBoolean("statsConsent", false)) postStats(c)
                 done()
             }
+        }.start()
+    }
+
+    /** Fetches the latest settings right now (before showing prices) and calls back even if offline. */
+    fun refreshNow(c: Context, cb: () -> Unit) {
+        Thread {
+            val t = call(BASE + "config?d=" + Prefs.device(c) + "&v=" + installed(c), null, true)
+            if (t != null && t.trim().startsWith("{")) Prefs.sp(c).edit().putString("cfg", t).putLong("cfgAt", System.currentTimeMillis()).apply()
+            cb()
         }.start()
     }
 
