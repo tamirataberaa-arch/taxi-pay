@@ -1,21 +1,21 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Taxi Pay - Hear every payment</title>
-<meta property="og:title" content="Taxi Pay - Hear every payment"><meta property="og:description" content="Your phone tells you who paid and how much. English and Amharic voice."><meta property="og:image" content="https://tamirataberaa-arch.github.io/taxi-pay/promo/cover-en.png">
+<title>Zound Pay - Hear every payment</title>
+<meta property="og:title" content="Zound Pay - Hear every payment"><meta property="og:description" content="Your phone tells you who paid and how much. English and Amharic voice."><meta property="og:image" content="https://tamirataberaa-arch.github.io/taxi-pay/promo/cover-en.png">
 <style>*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans Ethiopic",sans-serif;background:#f3f5f9;color:#111827}
-header{background:linear-gradient(#0f1b3d,#1b2b66);color:#fff;padding:20px 20px 40px;border-radius:0 0 28px 28px}.in{max-width:760px;margin:auto}
+header{background:linear-gradient(#6b0a24,#8e1038);color:#fff;padding:20px 20px 40px;border-radius:0 0 28px 28px}.in{max-width:760px;margin:auto}
 .top{display:flex;justify-content:space-between;align-items:center}.logo{font-weight:800;font-size:22px}
-.lang button{border:0;background:#ffffff26;color:#fff;padding:8px 14px;border-radius:20px;font-weight:700;margin-left:6px;font-size:15px}.lang button.on{background:#ffc107;color:#0f1b3d}
+.lang button{border:0;background:#ffffff26;color:#fff;padding:8px 14px;border-radius:20px;font-weight:700;margin-left:6px;font-size:15px}.lang button.on{background:#ffc107;color:#6b0a24}
 h1{font-size:36px;line-height:1.15;margin:28px 0 10px}p.s{font-size:19px;color:#d0d8f0;margin:0 0 22px}
-.btn{display:inline-block;background:#ffc107;color:#0f1b3d;font-weight:800;padding:16px 28px;border-radius:30px;text-decoration:none;font-size:19px}
+.btn{display:inline-block;background:#ffc107;color:#6b0a24;font-weight:800;padding:16px 28px;border-radius:30px;text-decoration:none;font-size:19px}
 main{max-width:760px;margin:auto;padding:6px 16px 40px}.card{background:#fff;border-radius:20px;padding:18px 20px;margin:14px 0;box-shadow:0 1px 4px #0002}
-h2{margin:0 0 8px;font-size:20px}li{margin:9px 0;line-height:1.45}.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.g img{width:100%;border-radius:14px;display:block}.g a{font-size:14px;font-weight:700;color:#0f1b3d;text-decoration:none;display:block;padding:6px 0}
+h2{margin:0 0 8px;font-size:20px}li{margin:9px 0;line-height:1.45}.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.g img{width:100%;border-radius:14px;display:block}.g a{font-size:14px;font-weight:700;color:#6b0a24;text-decoration:none;display:block;padding:6px 0}
 .price{background:#ffc107}small{color:#6b7280;line-height:1.5;display:block}</style></head><body>
-<header><div class="in"><div class="top"><div class="logo">Taxi Pay</div><div class="lang"><button id="b-en" class="on" onclick="L('en')">English</button><button id="b-am" onclick="L('am')">አማርኛ</button></div></div>
+<header><div class="in"><div class="top"><div class="logo">Zound Pay</div><div class="lang"><button id="b-en" class="on" onclick="L('en')">English</button><button id="b-am" onclick="L('am')">አማርኛ</button></div></div>
 <h1 data-en="Hear every payment." data-am="እያንዳንዱን ክፍያ በድምፅ ይስሙ">Hear every payment.</h1>
 <p class="s" data-en="Your phone tells you who paid and how much." data-am="ማን ምን ያህል እንደከፈለ ስልክዎ ይነግርዎታል።">Your phone tells you who paid and how much.</p>
-<a class="btn" href="https://github.com/tamirataberaa-arch/taxi-pay/releases/latest/download/taxi-pay.apk" data-en="Download free" data-am="በነፃ ያውርዱ">Download free</a></div></header>
+<p id="inv" style="display:none;background:#ffffff26;padding:10px 14px;border-radius:12px;font-weight:700"></p><a class="btn" href="https://github.com/tamirataberaa-arch/taxi-pay/releases/latest/download/taxi-pay.apk" data-en="Download free" data-am="በነፃ ያውርዱ">Download free</a></div></header>
 <main>
-<div class="card"><h2 data-en="Why Taxi Pay" data-am="ለምን Taxi Pay">Why Taxi Pay</h2><ul>
+<div class="card"><h2 data-en="Why Zound Pay" data-am="ለምን Zound Pay">Why Zound Pay</h2><ul>
 <li data-en="Hear the name and amount of every payment" data-am="የእያንዳንዱን ክፍያ ስምና መጠን ይስሙ"></li>
 <li data-en="English and Amharic voice" data-am="በአማርኛና በእንግሊዝኛ ድምፅ"></li>
 <li data-en="Works without internet" data-am="ኢንተርኔት ሳይኖር ይሰራል"></li>
@@ -32,6 +32,9 @@ h2{margin:0 0 8px;font-size:20px}li{margin:9px 0;line-height:1.45}.g{display:gri
 <div><img src="promo/hero-en.png" alt=""><a href="promo/hero-en.png" download>English 1</a></div><div><img src="promo/how-en.png" alt=""><a href="promo/how-en.png" download>English 2</a></div><div><img src="promo/features-en.png" alt=""><a href="promo/features-en.png" download>English 3</a></div>
 <div><img src="promo/hero-am.png" alt=""><a href="promo/hero-am.png" download>አማርኛ 1</a></div><div><img src="promo/how-am.png" alt=""><a href="promo/how-am.png" download>አማርኛ 2</a></div><div><img src="promo/features-am.png" alt=""><a href="promo/features-am.png" download>አማርኛ 3</a></div></div>
 <p><a href="promo/taxi-pay-brochure.pdf" download data-en="Download the brochure (PDF, English and Amharic)" data-am="ብሮሹሩን ያውርዱ (PDF፣ አማርኛና እንግሊዝኛ)"></a></p></div>
-<small data-en="Telebirr, CBE and CBE Birr are trademarks of their owners. Taxi Pay is an independent app. An SMS shows a payment was sent to you; confirm important payments in your bank or Telebirr app." data-am="ቴሌብር፣ CBE እና CBE ብር የባለቤቶቻቸው የንግድ ምልክቶች ናቸው። Taxi Pay ራሱን የቻለ መተግበሪያ ነው። SMS ክፍያ እንደተላከልዎ ያሳያል፤ ትልቅ ክፍያ በባንክዎ ወይም በቴሌብር መተግበሪያ ያረጋግጡ።"></small></main>
+<small data-en="Telebirr, CBE and CBE Birr are trademarks of their owners. Zound Pay is an independent app. An SMS shows a payment was sent to you; confirm important payments in your bank or Telebirr app." data-am="ቴሌብር፣ CBE እና CBE ብር የባለቤቶቻቸው የንግድ ምልክቶች ናቸው። Zound Pay ራሱን የቻለ መተግበሪያ ነው። SMS ክፍያ እንደተላከልዎ ያሳያል፤ ትልቅ ክፍያ በባንክዎ ወይም በቴሌብር መተግበሪያ ያረጋግጡ።"></small></main>
 <script>function L(l){document.documentElement.lang=l;document.querySelectorAll('[data-en]').forEach(function(e){e.textContent=e.getAttribute('data-'+l)});document.getElementById('b-en').className=l=='en'?'on':'';document.getElementById('b-am').className=l=='am'?'on':'';try{localStorage.setItem('l',l)}catch(e){}}
-L((function(){try{return localStorage.getItem('l')||'en'}catch(e){return 'en'}})());</script></body></html>
+L((function(){try{return localStorage.getItem('l')||'en'}catch(e){return 'en'}})());var ref=(new URLSearchParams(location.search).get('ref')||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+if(ref.length==6){var iv=document.getElementById('inv');iv.style.display='block';iv.textContent='Invited with code '+ref+'. Install the app and open it: the code is added for you.  ·  በኮድ '+ref+' ተጋብዘዋል'}
+document.querySelectorAll('a.btn').forEach(function(b){b.addEventListener('click',function(){if(ref.length==6){var t=document.createElement('textarea');t.value='ZPREF:'+ref;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(e){}document.body.removeChild(t)}})});
+</script></body></html>
